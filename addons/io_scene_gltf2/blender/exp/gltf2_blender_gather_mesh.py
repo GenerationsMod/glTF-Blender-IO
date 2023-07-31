@@ -21,6 +21,8 @@ from ...io.exp.gltf2_io_user_extensions import export_user_extensions
 from ..com.gltf2_blender_extras import generate_extras
 from . import gltf2_blender_gather_primitives
 from .gltf2_blender_gather_cache import cached_by_key
+from .material.extensions import gltf2_blender_gather_materials_variants
+from ...io.com import gltf2_io, gltf2_io_constants, gltf2_io_extensions
 
 def get_mesh_cache_key(blender_mesh,
                 blender_object,
@@ -102,7 +104,40 @@ def __gather_extensions(blender_mesh: bpy.types.Mesh,
                         modifiers: Optional[bpy.types.ObjectModifiers],
                         export_settings
                         ) -> Any:
-    return None
+    extensions = {}
+
+    if bpy.context.preferences.addons['io_scene_gltf2'].preferences.KHR_materials_variants_ui is False:
+        return None
+
+    if bpy.data.scenes[0].get('gltf2_KHR_materials_variants_variants') is None:
+        return None
+    if len(bpy.data.scenes[0]['gltf2_KHR_materials_variants_variants']) == 0:
+        return None
+
+    # Material idx is the slot idx. Retrieve associated variant, if any
+    mapping = []
+    for idx, v in enumerate(blender_mesh.gltf2_variant_mesh_visibility.variants):
+        if v.variant.variant_idx in [o.variant.variant_idx for o in blender_mesh.gltf2_variant_mesh_visibility.variants[:idx]]:
+            # Avoid duplicates
+            continue
+        vari = gltf2_blender_gather_materials_variants.gather_variant(v.variant.variant_idx, export_settings)
+        if vari is not None:
+            variant_extension = gltf2_io_extensions.ChildOfRootExtension(
+            name="KHR_materials_variants",
+            path=["variants"],
+            extension=vari
+            )
+            mapping.append(variant_extension)
+    
+    if len(mapping) > 0:
+        extensions["KHR_materials_variants"] = gltf2_io_extensions.Extension(
+            name="KHR_materials_variants",
+            extension={
+                "variants": mapping
+            }
+        )
+
+    return extensions if extensions else None
 
 
 def __gather_extras(blender_mesh: bpy.types.Mesh,

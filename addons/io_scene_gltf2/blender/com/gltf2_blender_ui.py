@@ -158,6 +158,14 @@ class SCENE_OT_gltf2_variant_remove(bpy.types.Operator):
                 for idx_data in remove_idx_data:
                     mesh.gltf2_variant_mesh_data.remove(idx_data)
 
+            remove_idx_data = []
+            for idx, i in enumerate(mesh.gltf2_variant_mesh_visibility.variants):
+                remove_idx_data.append(idx)
+
+            if len(remove_idx_data) > 0:
+                for idx_data in remove_idx_data:
+                    mesh.gltf2_variant_mesh_visibility.variants.remove(idx_data)
+
         return {'FINISHED'}
 
 
@@ -186,7 +194,18 @@ class SCENE_OT_gltf2_display_variant(bpy.types.Operator):
                     if slot < len(obj.material_slots): # Seems user remove some slots...
                         obj.material_slots[slot].material = mat
 
+
+            if mesh.gltf2_variant_mesh_visibility.variants and gltf2_active_variant in [v.variant.variant_idx for v in mesh.gltf2_variant_mesh_visibility.variants]:
+                set_object_visibility(obj, True)
+            else:
+                set_object_visibility(obj, False)
+
         return {'FINISHED'}
+    
+def set_object_visibility(obj, hide=True):
+    # Set visibility for the viewport and render based on the 'hide' boolean
+    obj.hide_viewport = hide
+    obj.hide_render = hide
 
 # Operator to assign current mesh materials to a variant
 class SCENE_OT_gltf2_assign_to_variant(bpy.types.Operator):
@@ -202,6 +221,10 @@ class SCENE_OT_gltf2_assign_to_variant(bpy.types.Operator):
     def execute(self, context):
         gltf2_active_variant = bpy.data.scenes[0].gltf2_active_variant
         obj = bpy.context.object
+
+        vari = obj.data.gltf2_variant_mesh_visibility.variants.add()
+        vari.variant.variant_idx = bpy.data.scenes[0].gltf2_active_variant
+
 
         # loop on material slots ( primitives )
         for mat_slot_idx, s in enumerate(obj.material_slots):
@@ -235,6 +258,8 @@ class SCENE_OT_gltf2_reset_to_original(bpy.types.Operator):
     def execute(self, context):
         obj = bpy.context.object
 
+        set_object_visibility(obj)
+
         # loop on material slots ( primitives )
         for mat_slot_idx, s in enumerate(obj.material_slots):
             # Check if there is a default material for this slot
@@ -258,6 +283,8 @@ class SCENE_OT_gltf2_assign_as_original(bpy.types.Operator):
 
     def execute(self, context):
         obj = bpy.context.object
+        
+        # There is no default visible only true.
 
         # loop on material slots ( primitives )
         for mat_slot_idx, s in enumerate(obj.material_slots):
@@ -292,7 +319,11 @@ class gltf2_KHR_materials_variants_primitive(bpy.types.PropertyGroup):
     variants: bpy.props.CollectionProperty(type=gltf2_KHR_materials_variant_pointer)
     active_variant_idx: bpy.props.IntProperty()
 
-class MESH_UL_gltf2_mesh_variants(bpy.types.UIList):
+class gltf2_KHR_materials_variants_visibility(bpy.types.PropertyGroup):
+    variants: bpy.props.CollectionProperty(type=gltf2_KHR_materials_variant_pointer)
+    active_variant_idx: bpy.props.IntProperty()
+
+class MESH_UL_gltf2_mesh_variants_material(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
 
         vari = item.variant
@@ -303,8 +334,8 @@ class MESH_UL_gltf2_mesh_variants(bpy.types.UIList):
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
 
-class MESH_PT_gltf2_mesh_variants(bpy.types.Panel):
-    bl_label = "glTF Material Variants"
+class MESH_PT_gltf2_mesh_variants_material(bpy.types.Panel):
+    bl_label = "glTF Variants - Material"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = "material"
@@ -328,11 +359,11 @@ class MESH_PT_gltf2_mesh_variants(bpy.types.Panel):
 
         row = layout.row()
         if found is True:
-            row.template_list("MESH_UL_gltf2_mesh_variants", "", prim, "variants", prim, "active_variant_idx")
+            row.template_list("MESH_UL_gltf2_mesh_variants_material", "", prim, "variants", prim, "active_variant_idx")
             col = row.column()
             row = col.column(align=True)
-            row.operator("scene.gltf2_variants_slot_add", icon="ADD", text="")
-            row.operator("scene.gltf2_remove_material_variant", icon="REMOVE", text="")
+            row.operator("scene.gltf2_variants_add_material", icon="ADD", text="")
+            row.operator("scene.gltf2_variants_remove_material", icon="REMOVE", text="")
 
             row = layout.row()
             if 'gltf2_KHR_materials_variants_variants' in bpy.data.scenes[0].keys() and len(bpy.data.scenes[0].gltf2_KHR_materials_variants_variants) > 0:
@@ -343,14 +374,13 @@ class MESH_PT_gltf2_mesh_variants(bpy.types.Panel):
                 row.label(text="Please Create a Variant First")
         else:
             if 'gltf2_KHR_materials_variants_variants' in bpy.data.scenes[0].keys() and len(bpy.data.scenes[0].gltf2_KHR_materials_variants_variants) > 0:
-                row.operator("scene.gltf2_variants_slot_add", text="Add a new Variant Slot")
+                row.operator("scene.gltf2_variants_add_material", text="Add a new Variant Slot")
             else:
                 row.label(text="Please Create a Variant First")
 
-
-class SCENE_OT_gltf2_variant_slot_add(bpy.types.Operator):
+class SCENE_OT_gltf2_variant_material_slot_add(bpy.types.Operator):
     """Add a new Slot"""
-    bl_idname = "scene.gltf2_variants_slot_add"
+    bl_idname = "scene.gltf2_variants_add_material"
     bl_label = "Add new Slot"
     bl_options = {'REGISTER'}
 
@@ -418,7 +448,7 @@ class SCENE_OT_gltf2_material_to_variant(bpy.types.Operator):
 
 class SCENE_OT_gltf2_remove_material_variant(bpy.types.Operator):
     """Remove a variant Slot"""
-    bl_idname = "scene.gltf2_remove_material_variant"
+    bl_idname = "scene.gltf2_variants_remove_material"
     bl_label = "Remove a variant Slot"
     bl_options = {'REGISTER'}
 
@@ -444,6 +474,118 @@ class SCENE_OT_gltf2_remove_material_variant(bpy.types.Operator):
 
         if len(variant_primitive.variants) == 0:
             mesh.gltf2_variant_mesh_data.remove(found_idx)
+
+        return {'FINISHED'}
+
+class MESH_UL_gltf2_mesh_variants_visiblity(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+
+        vari = item.variant
+        layout.context_pointer_set("id", vari)
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(bpy.data.scenes[0].gltf2_KHR_materials_variants_variants[vari.variant_idx], "name", text="", emboss=False)
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+
+class MESH_PT_gltf2_mesh_variants_visibility(bpy.types.Panel):
+    bl_label = "glTF Variants - Visibility"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    @classmethod
+    def poll(self, context):
+        return bpy.context.preferences.addons['io_scene_gltf2'].preferences.KHR_materials_variants_ui is True \
+
+
+    def draw(self, context):
+        layout = self.layout
+
+        prim = bpy.context.object.data.gltf2_variant_mesh_visibility
+
+        row = layout.row()
+
+        if 'gltf2_variant_mesh_visibility' in bpy.context.object.data.keys() and len(prim.variants) > 0:
+            row.template_list("MESH_UL_gltf2_mesh_variants_visiblity", "", prim, "variants", prim, "active_variant_idx")
+            col = row.column()
+            row = col.column(align=True)
+            row.operator("scene.gltf2_variants_add_visibility", icon="ADD", text="")
+            row.operator("scene.gltf2_variants_remove_visibility", icon="REMOVE", text="")
+
+            row = layout.row()
+            if 'gltf2_KHR_materials_variants_variants' in bpy.data.scenes[0].keys() and len(bpy.data.scenes[0].gltf2_KHR_materials_variants_variants) > 0:
+                row.prop_search(context.object.data, "gltf2_variant_pointer", bpy.data.scenes[0], "gltf2_KHR_materials_variants_variants", text="Variant")
+                row = layout.row()
+                row.operator("scene.gltf2_visibility_to_variant", text="Assign To Variant")
+            else:
+                row.label(text="Please Create a Variant First")
+        else:
+            if 'gltf2_KHR_materials_variants_variants' in bpy.data.scenes[0].keys() and len(bpy.data.scenes[0].gltf2_KHR_materials_variants_variants) > 0:
+                row.operator("scene.gltf2_variants_add_visibility", text="Add a new Variant Slot")
+            else:
+                row.label(text="Please Create a Variant First")                
+
+class SCENE_OT_gltf2_variant_visibility_slot_add(bpy.types.Operator):
+    """Add a new Slot"""
+    bl_idname = "scene.gltf2_variants_add_visibility"
+    bl_label = "Add new Slot"
+    bl_options = {'REGISTER'}
+
+    @classmethod
+    def poll(self, context):
+        return len(bpy.context.object.material_slots) > 0
+
+    def execute(self, context):
+        variant_primitive = context.object.data.gltf2_variant_mesh_visibility
+        
+        vari = variant_primitive.variants.add()
+        vari.variant.variant_idx = bpy.data.scenes[0].gltf2_active_variant
+
+        return {'FINISHED'}
+
+class SCENE_OT_gltf2_visibility_to_variant(bpy.types.Operator):
+    """Assign Variant to Slot"""
+    bl_idname = "scene.gltf2_visibility_to_variant"
+    bl_label = "Assign Material To Variant"
+    bl_options = {'REGISTER'}
+
+    @classmethod
+    def poll(self, context):
+        return context.object.data.gltf2_variant_pointer != ""
+
+    def execute(self, context):
+        variant_primitive = context.object.data.gltf2_variant_mesh_visibility
+
+        vari = variant_primitive.variants[variant_primitive.active_variant_idx]
+
+        # Retrieve variant idx
+        found = False
+        for v in bpy.data.scenes[0].gltf2_KHR_materials_variants_variants:
+            if v.name == context.object.data.gltf2_variant_pointer:
+                found = True
+                break
+
+        if found is False:
+            return {'CANCELLED'}
+
+        vari.variant.variant_idx = v.variant_idx
+
+        return {'FINISHED'}
+
+class SCENE_OT_gltf2_remove_visibility_variant(bpy.types.Operator):
+    """Remove a variant Slot"""
+    bl_idname = "scene.gltf2_variants_remove_visibility"
+    bl_label = "Remove a variant Slot"
+    bl_options = {'REGISTER'}
+
+    @classmethod
+    def poll(self, context):
+        return len(bpy.context.object.data.gltf2_variant_mesh_visibility.variants) > 0
+
+    def execute(self, context):
+        variant_primitive = context.object.data.gltf2_variant_mesh_visibility
+        variant_primitive.variants.remove(variant_primitive.active_variant_idx)
 
         return {'FINISHED'}
 
@@ -540,20 +682,28 @@ def variant_register():
     bpy.utils.register_class(SCENE_OT_gltf2_reset_to_original)
     bpy.utils.register_class(SCENE_OT_gltf2_assign_as_original)
     bpy.utils.register_class(SCENE_OT_gltf2_remove_material_variant)
+    bpy.utils.register_class(SCENE_OT_gltf2_remove_visibility_variant)
     bpy.utils.register_class(gltf2_KHR_materials_variants_variant)
     bpy.utils.register_class(gltf2_KHR_materials_variant_pointer)
     bpy.utils.register_class(gltf2_KHR_materials_variants_primitive)
+    bpy.utils.register_class(gltf2_KHR_materials_variants_visibility)
     bpy.utils.register_class(gltf2_KHR_materials_variants_default_material)
     bpy.utils.register_class(SCENE_UL_gltf2_variants)
     bpy.utils.register_class(SCENE_PT_gltf2_variants)
-    bpy.utils.register_class(MESH_UL_gltf2_mesh_variants)
-    bpy.utils.register_class(MESH_PT_gltf2_mesh_variants)
+    bpy.utils.register_class(MESH_PT_gltf2_mesh_variants_material)
+    bpy.utils.register_class(MESH_UL_gltf2_mesh_variants_material)
+    bpy.utils.register_class(MESH_PT_gltf2_mesh_variants_visibility)
+    bpy.utils.register_class(MESH_UL_gltf2_mesh_variants_visiblity)
     bpy.utils.register_class(SCENE_OT_gltf2_variant_add)
     bpy.utils.register_class(SCENE_OT_gltf2_variant_remove)
     bpy.utils.register_class(SCENE_OT_gltf2_material_to_variant)
-    bpy.utils.register_class(SCENE_OT_gltf2_variant_slot_add)
+    bpy.utils.register_class(SCENE_OT_gltf2_variant_material_slot_add)
+    bpy.utils.register_class(SCENE_OT_gltf2_visibility_to_variant)
+    bpy.utils.register_class(SCENE_OT_gltf2_variant_visibility_slot_add)
     bpy.types.Mesh.gltf2_variant_mesh_data = bpy.props.CollectionProperty(type=gltf2_KHR_materials_variants_primitive)
+    bpy.types.Mesh.gltf2_variant_mesh_visibility = bpy.props.PointerProperty(type=gltf2_KHR_materials_variants_visibility)
     bpy.types.Mesh.gltf2_variant_default_materials = bpy.props.CollectionProperty(type=gltf2_KHR_materials_variants_default_material)
+
     bpy.types.Mesh.gltf2_variant_pointer = bpy.props.StringProperty()
     bpy.types.Scene.gltf2_KHR_materials_variants_variants = bpy.props.CollectionProperty(type=gltf2_KHR_materials_variants_variant)
     bpy.types.Scene.gltf2_active_variant = bpy.props.IntProperty()
@@ -565,7 +715,9 @@ def variant_unregister():
     bpy.utils.unregister_class(SCENE_OT_gltf2_variant_add)
     bpy.utils.unregister_class(SCENE_OT_gltf2_variant_remove)
     bpy.utils.unregister_class(SCENE_OT_gltf2_material_to_variant)
-    bpy.utils.unregister_class(SCENE_OT_gltf2_variant_slot_add)
+    bpy.utils.unregister_class(SCENE_OT_gltf2_variant_material_slot_add)
+    bpy.utils.unregister_class(SCENE_OT_gltf2_visibility_to_variant)
+    bpy.utils.unregister_class(SCENE_OT_gltf2_variant_visibility_slot_add)
     bpy.utils.unregister_class(SCENE_OT_gltf2_display_variant)
     bpy.utils.unregister_class(SCENE_OT_gltf2_assign_to_variant)
     bpy.utils.unregister_class(SCENE_OT_gltf2_reset_to_original)
@@ -573,10 +725,13 @@ def variant_unregister():
     bpy.utils.unregister_class(SCENE_OT_gltf2_remove_material_variant)
     bpy.utils.unregister_class(SCENE_PT_gltf2_variants)
     bpy.utils.unregister_class(SCENE_UL_gltf2_variants)
-    bpy.utils.unregister_class(MESH_PT_gltf2_mesh_variants)
-    bpy.utils.unregister_class(MESH_UL_gltf2_mesh_variants)
+    bpy.utils.unregister_class(MESH_PT_gltf2_mesh_variants_material)
+    bpy.utils.unregister_class(MESH_UL_gltf2_mesh_variants_material)
+    bpy.utils.unregister_class(MESH_PT_gltf2_mesh_variants_visibility)
+    bpy.utils.unregister_class(MESH_UL_gltf2_mesh_variants_visiblity)
     bpy.utils.unregister_class(gltf2_KHR_materials_variants_default_material)
     bpy.utils.unregister_class(gltf2_KHR_materials_variants_primitive)
+    bpy.utils.unregister_class(gltf2_KHR_materials_variants_visibility)
     bpy.utils.unregister_class(gltf2_KHR_materials_variants_variant)
     bpy.utils.unregister_class(gltf2_KHR_materials_variant_pointer)
 

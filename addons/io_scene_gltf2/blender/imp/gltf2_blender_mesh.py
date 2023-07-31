@@ -62,6 +62,14 @@ def create_mesh(gltf, mesh_idx, skin_idx):
 
     import_user_extensions('gather_import_mesh_after_hook', gltf, pymesh, mesh)
 
+    has_variant = pymesh.extensions is not None and 'KHR_materials_variants' in pymesh.extensions.keys() and 'variants' in pymesh.extensions['KHR_materials_variants'].keys()
+
+    if(has_variant):
+        for variant in pymesh.extensions['KHR_materials_variants']['variants']:
+            variant_primitive = mesh.gltf2_variant_mesh_visibility
+            vari = variant_primitive.variants.add()
+            vari.variant.variant_idx = variant
+
     return mesh
 
 
