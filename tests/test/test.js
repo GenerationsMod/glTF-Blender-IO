@@ -161,6 +161,9 @@ function getAccessorData(gltfPath, asset, accessorIndex, bufferCache) {
     case 'VEC3':
         numElements = 3;
         break;
+    case 'VEC4':
+        numElements = 4;
+        break;
     default:
         throw new Error("Untested accessor type " + accessor.type);
     }
@@ -243,7 +246,7 @@ describe('Exporter', function() {
 
                             validateGltf(dstPath, done);
                         }, args);
-                        // validateGltf(dstPath, done); // uncomment this and comment blenderFileToGltf to not re-export all files
+                        //validateGltf(dstPath, done); // uncomment this and comment blenderFileToGltf to not re-export all files
                     });
                 });
             });
@@ -556,7 +559,7 @@ describe('Exporter', function() {
                 assert.strictEqual(asset.materials.length, 1);
                 assert.strictEqual(asset.images.length, 1);
                 const clearcoat = asset.materials[0].extensions.KHR_materials_clearcoat;
-                assert.equalEpsilon(clearcoat.clearcoatFactor, 0.9);
+                assert.equalEpsilon(clearcoat.clearcoatFactor, 0.225);
                 assert.equalEpsilon(clearcoat.clearcoatRoughnessFactor, 0.1);
 
                 // Base normal map
@@ -654,47 +657,9 @@ describe('Exporter', function() {
             it('exports custom normals', function() {
                 let gltfPath = path.resolve(outDirPath, '10_custom_normals.gltf');
                 const asset = JSON.parse(fs.readFileSync(gltfPath));
-                assert.strictEqual(asset.meshes.length, 2);
+                assert.strictEqual(asset.meshes.length, 1);
 
                 let bufferCache = {};
-
-                const angleCubeMesh = asset.meshes.filter(m => m.name === 'AngleCube')[0];
-                const flatNormals = angleCubeMesh.primitives[0].attributes.NORMAL;
-                const flatNormalData = getAccessorData(gltfPath, asset, flatNormals, bufferCache);
-                const flatNormalHash = buildVectorHash(flatNormalData);
-
-                // In this mesh, the beveled cube has various angled edges.  Custom normals
-                // exist but are not enabled via the auto-smooth flag.  So, many exported
-                // normals are not axis-aligned.
-                const expectedFlatNormalHash = {
-                    "0.000,1.000,0.000": 4,
-                    "-1.000,0.000,0.000": 4,
-                    "0.000,0.000,-1.000": 4,
-                    "0.000,-1.000,0.000": 4,
-                    "1.000,0.000,0.000": 4,
-                    "0.577,-0.577,0.577": 3,
-                    "0.577,0.577,0.577": 3,
-                    "0.577,-0.577,-0.577": 3,
-                    "0.577,0.577,-0.577": 3,
-                    "-0.577,-0.577,0.577": 3,
-                    "-0.577,0.577,0.577": 3,
-                    "-0.577,-0.577,-0.577": 3,
-                    "-0.577,0.577,-0.577": 3,
-                    "-0.707,0.707,0.000": 4,
-                    "0.000,0.707,0.707": 4,
-                    "0.707,0.000,0.707": 4,
-                    "-0.707,0.000,-0.707": 4,
-                    "0.707,0.000,-0.707": 4,
-                    "-0.707,0.000,0.707": 4,
-                    "0.000,-0.707,-0.707": 4,
-                    "0.707,-0.707,0.000": 4,
-                    "0.000,0.707,-0.707": 4,
-                    "-0.707,-0.707,0.000": 4,
-                    "0.000,-0.707,0.707": 4,
-                    "0.707,0.707,0.000": 4,
-                    "0.000,0.000,1.000": 4
-                };
-                assert.deepStrictEqual(flatNormalHash, expectedFlatNormalHash);
 
                 const smoothCubeMesh = asset.meshes.filter(m => m.name === 'SmoothCube')[0];
                 const customNormals = smoothCubeMesh.primitives[0].attributes.NORMAL;
@@ -911,55 +876,30 @@ describe('Exporter', function() {
 
                 assert.ok(!("specularTexture" in mat_NoTextSpec.extensions['KHR_materials_specular']));
                 assert.ok(!("specularColorTexture" in mat_NoTextSpec.extensions['KHR_materials_specular']));
-                assert.equalEpsilonArray(mat_NoTextSpec.extensions['KHR_materials_specular']["specularColorFactor"], [1.6599503018401929, 1.6599503018401929, 1.6599503018401929]);
+                assert.equalEpsilonArray(mat_NoTextSpec.extensions['KHR_materials_specular']["specularColorFactor"], [1.26, 1.12, 0.98]);
+                assert.ok(!("specularFactor" in mat_NoTextSpec.extensions['KHR_materials_specular']));
 
                 assert.ok(!("specularTexture" in mat_NoTextTint.extensions['KHR_materials_specular']));
                 assert.ok(!("specularColorTexture" in mat_NoTextTint.extensions['KHR_materials_specular']));
-                assert.equalEpsilonArray(mat_NoTextTint.extensions['KHR_materials_specular']["specularColorFactor"], [1.185679, 1.185679, 1.185679]);
+                assert.equalEpsilonArray(mat_NoTextTint.extensions['KHR_materials_specular']["specularColorFactor"], [0.96, 0.96, 0.96]);
+                assert.ok(!("specularFactor" in mat_NoTextTint.extensions['KHR_materials_specular']));
 
                 assert.ok(!("specularTexture" in mat_NoTextAll.extensions['KHR_materials_specular']));
                 assert.ok(!("specularColorTexture" in mat_NoTextAll.extensions['KHR_materials_specular']));
-                assert.equalEpsilonArray(mat_NoTextAll.extensions['KHR_materials_specular']["specularColorFactor"], [1.43114736, 1.72272237, 1.64982862]);
+                assert.equalEpsilonArray(mat_NoTextAll.extensions['KHR_materials_specular']["specularColorFactor"], [1.312, 1.504, 1.456]);
+                assert.ok(!("specularFactor" in mat_NoTextAll.extensions['KHR_materials_specular']));
 
                 assert.ok(!("specularTexture" in mat_NoTextAllIOR.extensions['KHR_materials_specular']));
                 assert.ok(!("specularColorTexture" in mat_NoTextAllIOR.extensions['KHR_materials_specular']));
-                assert.equalEpsilonArray(mat_NoTextAllIOR.extensions['KHR_materials_specular']["specularColorFactor"], [0.69732364, 0.82577104, 0.79340282]);
+                assert.equalEpsilonArray(mat_NoTextAllIOR.extensions['KHR_materials_specular']["specularColorFactor"], [1.312, 1.504, 1.4592]);
+                assert.ok(!("specularFactor" in mat_NoTextAllIOR.extensions['KHR_materials_specular']));
 
                 assert.ok(!("specularTexture" in mat_BaseColorTex_Factor.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_BaseColorTex_Factor.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_BaseColorTex_Factor.extensions['KHR_materials_specular']["specularColorFactor"], [1.5323156568293443, 1.6732413046240955, 1.6432079626899192]);
+                assert.ok(!("specularColorTexture" in mat_BaseColorTex_Factor.extensions['KHR_materials_specular']));
+                assert.equalEpsilonArray(mat_BaseColorTex_Factor.extensions['KHR_materials_specular']["specularColorFactor"], [1.312, 1.504, 1.456]);
+                assert.ok(!("specularFactor" in mat_BaseColorTex_Factor.extensions['KHR_materials_specular']));
 
-                assert.ok(!("specularTexture" in mat_BaseColorText_NoFactor.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_BaseColorText_NoFactor.extensions['KHR_materials_specular']);
-                assert.ok(!("specularColorFactor" in mat_BaseColorText_NoFactor.extensions['KHR_materials_specular']));
-
-                assert.ok(!("specularTexture" in mat_TexTrans.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TexTrans.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TexTrans.extensions['KHR_materials_specular']["specularColorFactor"], [1.4296006782732589, 1.72086059270931, 1.648045597824881]);
-
-                assert.ok(!("specularTexture" in mat_TexTint.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TexTint.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TexTint.extensions['KHR_materials_specular']["specularColorFactor"], [1.4298607500653402, 1.7233414556043727, 1.6499712628201024]);
-
-                assert.ok(!("specularTexture" in mat_TextSpec.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TextSpec.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TextSpec.extensions['KHR_materials_specular']["specularColorFactor"], [1.431147245659301, 1.7227222502400155, 1.6498284828018137]);
-
-                assert.ok(!("specularTexture" in mat_TextBaseSpec.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TextBaseSpec.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TextBaseSpec.extensions['KHR_materials_specular']["specularColorFactor"], [1.532315749957205, 1.6732414063168393, 1.6432080625573595]);
-
-                assert.ok(!("specularTexture" in mat_TextBaseSpecTint.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TextBaseSpecTint.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TextBaseSpecTint.extensions['KHR_materials_specular']["specularColorFactor"], [1.531690612214786, 1.6735372417757837, 1.6433076576487513]);
-
-                assert.ok(!("specularTexture" in mat_TextBaseSpecTintTrans.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TextBaseSpecTintTrans.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TextBaseSpecTintTrans.extensions['KHR_materials_specular']["specularColorFactor"], [1.5300354957580566, 1.6717288494110107, 1.6415319442749023]);
-
-                assert.ok(!("specularTexture" in mat_TextTrans.extensions['KHR_materials_specular']));
-                assert.ok("specularColorTexture" in mat_TextTrans.extensions['KHR_materials_specular']);
-                assert.equalEpsilonArray(mat_TextTrans.extensions['KHR_materials_specular']["specularColorFactor"], [1.4296006782732589, 1.72086059270931, 1.648045597824881]);
+                assert.ok(!("extensions" in mat_BaseColorText_NoFactor));
 
             });
 
@@ -971,6 +911,25 @@ describe('Exporter', function() {
                 assert.strictEqual(asset.scenes[0].nodes.length, 9);
                 assert.strictEqual(asset.meshes.length, 6);
             });
+
+            it('manages node groups', function() {
+                let gltfPath = path.resolve(outDirPath, '22_node_groups.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                const mat_ref = asset.materials.find(mat => mat.name === "Ref");
+                const mat_out = asset.materials.find(mat => mat.name === "out");
+                const mat_in = asset.materials.find(mat => mat.name === "in");
+                const mat_nested = asset.materials.find(mat => mat.name === "nested");
+                const mat_2groups = asset.materials.find(mat => mat.name === "2groups");
+
+                assert.ok("baseColorTexture" in mat_ref.pbrMetallicRoughness);
+                assert.ok("baseColorTexture" in mat_out.pbrMetallicRoughness);
+                assert.ok("baseColorTexture" in mat_in.pbrMetallicRoughness);
+                assert.ok("baseColorTexture" in mat_nested.pbrMetallicRoughness);
+                assert.ok("baseColorTexture" in mat_2groups.pbrMetallicRoughness);
+
+            });
+
 
             it('exports Attributes', function() {
                 let gltfPath = path.resolve(outDirPath, '22_vertex_colors_and_attributes.gltf');
@@ -1122,7 +1081,16 @@ describe('Exporter', function() {
                 let gltfPath_3 = path.resolve(outDirPath, '23_use_active_collection_nested.gltf');
                 const asset_3 = JSON.parse(fs.readFileSync(gltfPath_3));
                 assert.strictEqual(asset_3.nodes.length, 2);
-            });
+              });
+
+              it('exports GN', function() {
+                let gltfPath = path.resolve(outDirPath, '22_simple_GN.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.materials.length, 2);
+                assert.strictEqual(asset.meshes.length, 2);
+
+              });
 
             it('exports correct no SK when modifier', function() {
                 let gltfPath_1 = path.resolve(outDirPath, '27_apply_modifier_with_shapekeys.gltf');
@@ -1226,7 +1194,7 @@ describe('Exporter', function() {
                 assert.equalEpsilon(pbr.metallicFactor, 0.2);
                 assert.equalEpsilon(pbr.roughnessFactor, 0.3);
                 assert.equalEpsilon(mat.extensions['KHR_materials_volume']["thicknessFactor"], 0.9);
-                assert.equalEpsilon(mat.extensions['KHR_materials_specular']["specularFactor"], 0.25);
+                assert.equalEpsilon(mat.extensions['KHR_materials_specular']["specularFactor"], 0.5);
                 assert.equalEpsilonArray(mat.extensions['KHR_materials_specular']["specularColorFactor"], [0.7, 0.6, 0.5]);
 
             });
@@ -1342,6 +1310,48 @@ describe('Exporter', function() {
 
                 assert.equal(outputData2_2[0], 0.0);
                 assert.equal(outputData2_2[1], 1.0);
+
+            });
+
+            it('exports using sk sparse', function() {
+                let gltfPath = path.resolve(outDirPath, '28_sparse_sk.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                const target_pos = asset.meshes[0].primitives[0].targets[0]['POSITION'];
+                const output_count = asset.accessors[target_pos].sparse['count'] ;
+                assert.equal(asset.accessors[target_pos].bufferView, null);
+                assert.notEqual(asset.accessors[target_pos].sparse['indices']['bufferView'], null);
+                assert.equal(output_count, 3);
+
+            });
+
+            it('exports using sk no sparse', function() {
+                let gltfPath = path.resolve(outDirPath, '28_sparse_sk_no_sparse.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                const target_pos = asset.meshes[0].primitives[0].targets[0]['POSITION'];
+                assert.equal(asset.accessors[target_pos].sparse, null);
+                assert.notEqual(asset.accessors[target_pos].bufferView, null);
+
+            });
+
+            it('exports using sk sparse omit', function() {
+                let gltfPath = path.resolve(outDirPath, '28_sparse_sk_omit.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                const target_pos = asset.meshes[0].primitives[0].targets[0]['POSITION'];
+                assert.equal(asset.accessors[target_pos].sparse, null);
+                assert.equal(asset.accessors[target_pos].bufferView, null);
+
+            });
+
+            it('exports using sk sparse size', function() {
+                let gltfPath = path.resolve(outDirPath, '28_sparse_sk_no_sparse_size.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                const target_pos = asset.meshes[0].primitives[0].targets[0]['POSITION'];
+                assert.equal(asset.accessors[target_pos].sparse, null);
+                assert.notEqual(asset.accessors[target_pos].bufferView, null);
 
             });
 
@@ -1830,8 +1840,358 @@ describe('Exporter', function() {
                 assert.strictEqual(asset.accessors[sphere_rotation_sampler.input].count, 6);
                 assert.strictEqual(asset.accessors[sphere_rotation_sampler.input].count, 6);
 
+            });
+
+            it('exports without gpu instancing', function() {
+                let gltfPath = path.resolve(outDirPath, '32_gpu_instancing_without_instancing.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.nodes.length, 13);
+                assert.strictEqual(asset.meshes.length,7);
+                assert.ok(asset.extensionsUsed == null);
 
             });
+
+            it('exports with gpu instancing', function() {
+                let gltfPath = path.resolve(outDirPath, '32_gpu_instancing_with_instancing.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.nodes.length, 9);
+                assert.strictEqual(asset.meshes.length,7);
+                assert.ok(!(asset.extensionsUsed == null));
+                const holder_nodes = asset.nodes.filter(a => a.extensions != null);
+                assert.strictEqual(holder_nodes.length, 2);
+
+                const node_0 = holder_nodes.filter(a => a.name === "Empty.0")[0];
+                const node_1 = holder_nodes.filter(a => a.name === "Empty.1")[0];
+
+                const data_0_t = asset.accessors[node_0.extensions["EXT_mesh_gpu_instancing"]["attributes"]["TRANSLATION"]];
+                const data_0_r = asset.accessors[node_0.extensions["EXT_mesh_gpu_instancing"]["attributes"]["ROTATION"]];
+                const data_0_s = asset.accessors[node_0.extensions["EXT_mesh_gpu_instancing"]["attributes"]["SCALE"]];
+
+                const data_1_t = asset.accessors[node_1.extensions["EXT_mesh_gpu_instancing"]["attributes"]["TRANSLATION"]];
+                const data_1_r = asset.accessors[node_1.extensions["EXT_mesh_gpu_instancing"]["attributes"]["ROTATION"]];
+                const data_1_s = asset.accessors[node_1.extensions["EXT_mesh_gpu_instancing"]["attributes"]["SCALE"]];
+
+                assert.strictEqual(data_0_t.count, 3);
+                assert.strictEqual(data_0_r.count, 3);
+                assert.strictEqual(data_0_s.count, 3);
+
+                assert.strictEqual(data_1_t.count, 4);
+                assert.strictEqual(data_1_r.count, 4);
+                assert.strictEqual(data_1_s.count, 4);
+
+
+            });
+
+            it('exports all influences', function() {
+
+                let gltfPath = path.resolve(outDirPath, '32_weights_influence_all.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                let bufferCache = {};
+
+                const m1 = asset.meshes.filter(m => m.name === 'Plane')[0].primitives[0];
+                const m2 = asset.meshes.filter(m => m.name === 'Plane.001')[0].primitives[0];
+                const m3 = asset.meshes.filter(m => m.name === 'Plane.002')[0].primitives[0];
+
+                assert.ok("JOINTS_0" in m1['attributes']);
+                assert.ok(!("JOINTS_1" in m1['attributes']));
+
+                const m1_weights_0 = getAccessorData(gltfPath, asset, m1['attributes']['WEIGHTS_0'], bufferCache);
+                assert.equalEpsilonArray(m1_weights_0, [1.0,0.0,0.0,0.0]);
+
+
+                assert.ok("JOINTS_0" in m2['attributes']);
+                assert.ok("JOINTS_1" in m2['attributes']);
+                assert.ok(!("JOINTS_2" in m2['attributes']));
+
+                const m2_weights_0 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_0'], bufferCache);
+                const m2_weights_1 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_1'], bufferCache);
+
+                assert.equalEpsilonArray(m2_weights_0, [0.2,0.2,0.2,0.2]);
+                assert.equalEpsilonArray(m2_weights_1, [0.2,0.0,0.0,0.0]);
+
+                assert.ok("JOINTS_0" in m3['attributes']);
+                assert.ok("JOINTS_1" in m3['attributes']);
+                assert.ok("JOINTS_2" in m3['attributes']);
+                assert.ok(!("JOINTS_3" in m3['attributes']));
+
+                const m3_weights_0 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_0'], bufferCache);
+                const m3_weights_1 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_1'], bufferCache);
+                const m3_weights_2 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_2'], bufferCache);
+
+                assert.equalEpsilonArray(m3_weights_0, [0.1,0.1,0.1,0.1]);
+                assert.equalEpsilonArray(m3_weights_1, [0.1,0.1,0.1,0.1]);
+                assert.equalEpsilonArray(m3_weights_2, [0.1,0.1,0.0,0.0]);
+
+            });
+
+            it('exports 4 influences', function() {
+
+                let gltfPath = path.resolve(outDirPath, '32_weights_influence_4.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                let bufferCache = {};
+
+                const m1 = asset.meshes.filter(m => m.name === 'Plane')[0].primitives[0];
+                const m2 = asset.meshes.filter(m => m.name === 'Plane.001')[0].primitives[0];
+                const m3 = asset.meshes.filter(m => m.name === 'Plane.002')[0].primitives[0];
+
+                assert.ok("JOINTS_0" in m1['attributes']);
+                assert.ok(!("JOINTS_1" in m1['attributes']));
+
+                const m1_weights_0 = getAccessorData(gltfPath, asset, m1['attributes']['WEIGHTS_0'], bufferCache);
+                assert.equalEpsilonArray(m1_weights_0, [1.0,0.0,0.0,0.0]);
+
+
+                assert.ok("JOINTS_0" in m2['attributes']);
+                assert.ok(!("JOINTS_1" in m2['attributes']));
+
+                const m2_weights_0 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_0'], bufferCache);
+                assert.equalEpsilonArray(m2_weights_0, [0.4,0.3,0.2,0.1]);
+
+                assert.ok("JOINTS_0" in m3['attributes']);
+                assert.ok(!("JOINTS_1" in m3['attributes']));
+
+                const m3_weights_0 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_0'], bufferCache);
+
+                assert.equalEpsilonArray(m3_weights_0, [0.4,0.3,0.2,0.1]);
+
+            });
+
+            it('exports 6 influences', function() {
+
+                let gltfPath = path.resolve(outDirPath, '32_weights_influence_6.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                let bufferCache = {};
+
+                const m1 = asset.meshes.filter(m => m.name === 'Plane')[0].primitives[0];
+                const m2 = asset.meshes.filter(m => m.name === 'Plane.001')[0].primitives[0];
+                const m3 = asset.meshes.filter(m => m.name === 'Plane.002')[0].primitives[0];
+
+                assert.ok("JOINTS_0" in m1['attributes']);
+                assert.ok(!("JOINTS_1" in m1['attributes']));
+
+                const m1_weights_0 = getAccessorData(gltfPath, asset, m1['attributes']['WEIGHTS_0'], bufferCache);
+                assert.equalEpsilonArray(m1_weights_0, [1.0,0.0,0.0,0.0]);
+
+
+                assert.ok("JOINTS_0" in m2['attributes']);
+                assert.ok("JOINTS_1" in m2['attributes']);
+                assert.ok(!("JOINTS_2" in m2['attributes']));
+
+                const m2_weights_0 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_0'], bufferCache);
+                const m2_weights_1 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_1'], bufferCache);
+                assert.equalEpsilonArray(m2_weights_0, [0.4,0.3,0.1,0.1]);
+                assert.equalEpsilonArray(m2_weights_1, [0.1,0.0,0.0,0.0]);
+
+                assert.ok("JOINTS_0" in m3['attributes']);
+                assert.ok("JOINTS_1" in m3['attributes']);
+                assert.ok(!("JOINTS_2" in m3['attributes']));
+
+                const m3_weights_0 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_0'], bufferCache);
+                const m3_weights_1 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_1'], bufferCache);
+
+                assert.equalEpsilonArray(m3_weights_0, [0.2,0.2,0.2,0.2]);
+                assert.equalEpsilonArray(m3_weights_1, [0.1,0.1,0.0,0.0]);
+
+            });
+
+            it('exports 9 influences', function() {
+
+                let gltfPath = path.resolve(outDirPath, '32_weights_influence_9.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                let bufferCache = {};
+
+                const m1 = asset.meshes.filter(m => m.name === 'Plane')[0].primitives[0];
+                const m2 = asset.meshes.filter(m => m.name === 'Plane.001')[0].primitives[0];
+                const m3 = asset.meshes.filter(m => m.name === 'Plane.002')[0].primitives[0];
+
+                assert.ok("JOINTS_0" in m1['attributes']);
+                assert.ok(!("JOINTS_1" in m1['attributes']));
+
+                const m1_weights_0 = getAccessorData(gltfPath, asset, m1['attributes']['WEIGHTS_0'], bufferCache);
+                assert.equalEpsilonArray(m1_weights_0, [1.0,0.0,0.0,0.0]);
+
+
+                assert.ok("JOINTS_0" in m2['attributes']);
+                assert.ok("JOINTS_1" in m2['attributes']);
+                assert.ok(!("JOINTS_2" in m2['attributes']));
+
+                const m2_weights_0 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_0'], bufferCache);
+                const m2_weights_1 = getAccessorData(gltfPath, asset, m2['attributes']['WEIGHTS_1'], bufferCache);
+                assert.equalEpsilonArray(m2_weights_0, [0.4,0.3,0.1,0.1]);
+                assert.equalEpsilonArray(m2_weights_1, [0.1,0.0,0.0,0.0]);
+
+                assert.ok("JOINTS_0" in m3['attributes']);
+                assert.ok("JOINTS_1" in m3['attributes']);
+                assert.ok("JOINTS_2" in m3['attributes']);
+                assert.ok(!("JOINTS_3" in m3['attributes']));
+
+                const m3_weights_0 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_0'], bufferCache);
+                const m3_weights_1 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_1'], bufferCache);
+                const m3_weights_2 = getAccessorData(gltfPath, asset, m3['attributes']['WEIGHTS_2'], bufferCache);
+
+                assert.equalEpsilonArray(m3_weights_0, [0.2,0.1,0.1,0.1]);
+                assert.equalEpsilonArray(m3_weights_1, [0.1,0.1,0.1,0.1]);
+                assert.equalEpsilonArray(m3_weights_2, [0.1,0.0,0.0,0.0]);
+
+            });
+
+            it('exports Custom Attribute UVMaps', function() {
+                let gltfPath = path.resolve(outDirPath, '32_custom_uvmap_attribute.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.materials.length, 2);
+                const material_0 = asset.materials[asset.meshes.filter(a => a.name == "Cube.001")[0].primitives[0]["material"]]
+                const material_1 = asset.materials[asset.meshes.filter(a => a.name == "Cube.002")[0].primitives[0]["material"]]
+                assert.strictEqual(material_0.pbrMetallicRoughness["baseColorTexture"]["index"], 0);
+                assert.strictEqual(material_0.pbrMetallicRoughness["baseColorTexture"]["texCoord"], 5);
+                assert.strictEqual(material_1.pbrMetallicRoughness["baseColorTexture"]["index"], 0);
+                assert.strictEqual(material_1.pbrMetallicRoughness["baseColorTexture"]["texCoord"], 1);
+
+            });
+
+            it('exports UVMaps texcoord', function() {
+                let gltfPath = path.resolve(outDirPath, '32_uvmap_indices.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.images.length, 1);
+                assert.strictEqual(asset.meshes.length, 6);
+                assert.strictEqual(asset.materials.length, 6);
+
+                const material_0 = asset.materials[asset.meshes[asset.nodes.filter(a => a.name == "Cube")[0].mesh].primitives[0]["material"]]
+                const material_1 = asset.materials[asset.meshes[asset.nodes.filter(a => a.name == "Cube.003")[0].mesh].primitives[0]["material"]]
+                const material_2 = asset.materials[asset.meshes[asset.nodes.filter(a => a.name == "Cube.001")[0].mesh].primitives[0]["material"]]
+                const material_3 = asset.materials[asset.meshes[asset.nodes.filter(a => a.name == "Cube.002")[0].mesh].primitives[0]["material"]]
+                const material_4 = asset.materials[asset.meshes[asset.nodes.filter(a => a.name == "Plane")[0].mesh].primitives[0]["material"]]
+                const material_5 = asset.materials[asset.meshes[asset.nodes.filter(a => a.name == "Plane.001")[0].mesh].primitives[0]["material"]]
+
+
+                assert.ok(!("texCoord" in material_0.emissiveTexture));
+                assert.strictEqual(material_1.emissiveTexture["texCoord"], 1);
+                assert.strictEqual(material_2.emissiveTexture["texCoord"], 1);
+                assert.ok(!("texCoord" in material_3.emissiveTexture));
+                assert.strictEqual(material_4.pbrMetallicRoughness["baseColorTexture"]["texCoord"], 1);
+                assert.ok(!("texCoord" in material_5.pbrMetallicRoughness["baseColorTexture"]));
+
+            });
+
+            it('exports WebP mode', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '32_webp_mode_webp.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                for (var i = 0; i < asset.images.length; i++) {
+                    assert.strictEqual(asset.images[i].mimeType, 'image/webp');
+                }
+
+                for (var i=0; i < asset.textures.length; i++) {
+                    assert.strictEqual(asset.textures[i].source, undefined);
+                    assert.ok("extensions" in asset.textures[i]);
+                }
+
+            });
+
+            it('exports auto mode + webp fallback', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '32_webp_mode_auto_with_fallback.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                var texture_webp = asset.materials[0].pbrMetallicRoughness.baseColorTexture.index;
+
+                for (var i=0; i < asset.textures.length; i++) {
+                    if (i == texture_webp) {
+                        assert.ok("extensions" in asset.textures[i]);
+                        assert.ok(asset.textures[i].source != undefined);
+                    } else {
+                        assert.ok(asset.textures[i].source != undefined);
+                        assert.ok(!("extensions" in asset.textures[i]));
+                    }
+                }
+            });
+
+            it('exports auto mode + create WebP', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '32_webp_mode_auto_with_create_webp.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                var texture_webp = asset.materials[0].pbrMetallicRoughness.baseColorTexture.index;
+
+                for (var i=0; i < asset.textures.length; i++) {
+                    if (i == texture_webp) {
+                        assert.ok("extensions" in asset.textures[i]);
+                        assert.strictEqual(asset.textures[i].source, undefined);
+                    } else {
+                        assert.ok(asset.textures[i].source != undefined);
+                        assert.ok("extensions" in asset.textures[i]);
+                    }
+                }
+            });
+
+            it('exports auto mode + create WebP + fallback', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '32_webp_mode_auto_with_fallback_and_create_webp.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                for (var i=0; i < asset.textures.length; i++) {
+                    assert.ok("extensions" in asset.textures[i]);
+                    assert.ok(asset.textures[i].source != undefined);
+                }
+            });
+
+            it('exports UDIM', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '33_udim.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                assert.strictEqual(asset.images.length, 15);
+                assert.strictEqual(asset.meshes.length, 1);
+                assert.strictEqual(asset.meshes[0].primitives.length, 4);
+                assert.strictEqual(asset.materials.length, 4);
+                assert.strictEqual(asset.textures.length, 20);
+            });
+
+            // These tests are disabled because they require an user extension to be registered
+            /*it('exports addtional textures & images', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '33_unused_texture_and_image.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                assert.strictEqual(asset.images.length, 3);
+                assert.strictEqual(asset.textures.length, 2);
+                assert.strictEqual(asset.materials.length, 1);
+                assert.strictEqual(asset.extras['additionalTextures'].length, 1);
+            });
+
+            it('exports addtional textures', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '33_unused_texture.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                assert.strictEqual(asset.images.length, 2);
+                assert.strictEqual(asset.textures.length, 2);
+                assert.strictEqual(asset.materials.length, 1);
+                assert.strictEqual(asset.extras['additionalTextures'].length, 1);
+            });
+            */
+
+            it('exports addtional images', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '33_unused_image.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                assert.strictEqual(asset.images.length, 3);
+                assert.strictEqual(asset.textures.length, 1);
+                assert.strictEqual(asset.materials.length, 1);
+                assert.ok(!("extras" in asset));
+            });
+
+            it('exports no addtional images & textures', function() {
+                let gltfPath_1 = path.resolve(outDirPath, '33_no_unused_texture_and_image.gltf');
+                var asset = JSON.parse(fs.readFileSync(gltfPath_1));
+
+                assert.strictEqual(asset.images.length, 1);
+                assert.strictEqual(asset.textures.length, 1);
+                assert.strictEqual(asset.materials.length, 1);
+                assert.ok(!("extras" in asset));
+            });
+
         });
     });
 });
@@ -1863,7 +2223,7 @@ describe('Importer / Exporter (Roundtrip)', function() {
                         if (fs.existsSync(gltfOptionsPath)) {
                             options += ' ' + fs.readFileSync(gltfOptionsPath).toString().replace(/\r?\n|\r/g, '');
                         }
-                        // return done(); // uncomment to not roundtrip all files
+                        //return done(); // uncomment to not roundtrip all files
                         blenderRoundtripGltf(blenderVersion, gltfSrcPath, outDirPath, (error) => {
                             if (error)
                                 return done(error);
@@ -2028,6 +2388,16 @@ describe('Importer / Exporter (Roundtrip)', function() {
                 assert.strictEqual(asset.images[imageIndex].uri, '01_principled_emissive.png');
                 assert.deepStrictEqual(asset.materials[0].emissiveFactor, [1, 1, 1]);
                 assert(fs.existsSync(path.resolve(outDirPath, '01_principled_emissive.png')));
+            });
+
+            it('roundtrips skin cylinder', function() {
+                let dir = '03_skinned_cylinder';
+                let outDirPath = path.resolve(OUT_PREFIX, 'roundtrip', dir, outDirName);
+                let gltfPath = path.resolve(outDirPath, dir + '.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.meshes.length, 1); // be sure bone shape are not re-exported
+
             });
 
             it('roundtrips an OcclusionRoughnessMetallic texture', function() {
@@ -2608,18 +2978,7 @@ describe('Importer / Exporter (Roundtrip)', function() {
                 const mat_SpecColorTex = asset.materials.find(mat => mat.name === "SpecColorTex");
                 const mat_SpecColorTexFac = asset.materials.find(mat => mat.name === "SpecColorTexFac");
 
-                if ('specularFactor' in mat_SpecDefault.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_SpecDefault.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_SpecDefault.extensions['KHR_materials_specular']));
-                }
-                assert.ok(!("specularTexture" in mat_SpecDefault.extensions['KHR_materials_specular']));
-                if ('specularColorFactor' in mat_SpecDefault.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilonArray(mat_SpecDefault.extensions['KHR_materials_specular']['specularColorFactor'], [1.0, 1.0, 1.0]);
-                } else {
-                    assert.ok(!("specularColorFactor" in mat_SpecDefault.extensions['KHR_materials_specular']));
-                }
-                assert.ok(!("specularColorTexture" in mat_SpecDefault.extensions['KHR_materials_specular']));
+                assert.strictEqual(mat_SpecDefault.extensions, undefined);
 
                 if ('specularColorFactor' in mat_Factor.extensions['KHR_materials_specular']) {
                     assert.equalEpsilonArray(mat_Factor.extensions['KHR_materials_specular']['specularColorFactor'], [1.0, 1.0, 1.0]);
@@ -2676,95 +3035,6 @@ describe('Importer / Exporter (Roundtrip)', function() {
 
             });
 
-            it('roundtrips Specular Converted', function() {
-
-                let dir = '20_specular';
-                let outDirPath = path.resolve(OUT_PREFIX, 'roundtrip', dir, outDirName);
-                let gltfPath = path.resolve(outDirPath, dir + '.gltf');
-                const asset = JSON.parse(fs.readFileSync(gltfPath));
-
-                const mat_SpecDefault = asset.materials.find(mat => mat.name === "SpecDefault");
-                const mat_Factor = asset.materials.find(mat => mat.name === "Factor");
-                const mat_Color = asset.materials.find(mat => mat.name === "Color");
-                const mat_SpecTex = asset.materials.find(mat => mat.name === "SpecTex");
-                const mat_SpecTexFac = asset.materials.find(mat => mat.name === "SpecTexFac");
-                const mat_SpecColorTex = asset.materials.find(mat => mat.name === "SpecColorTex");
-                const mat_SpecColorTexFac = asset.materials.find(mat => mat.name === "SpecColorTexFac");
-
-                if ('specularFactor' in mat_SpecDefault.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_SpecDefault.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_SpecDefault.extensions['KHR_materials_specular']));
-                }
-                assert.ok(!("specularTexture" in mat_SpecDefault.extensions['KHR_materials_specular']));
-                if ('specularColorFactor' in mat_SpecDefault.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilonArray(mat_SpecDefault.extensions['KHR_materials_specular']['specularColorFactor'], [1.0, 1.0, 1.0]);
-                } else {
-                    assert.ok(!("specularColorFactor" in mat_SpecDefault.extensions['KHR_materials_specular']));
-                }
-                assert.ok(!("specularColorTexture" in mat_SpecDefault.extensions['KHR_materials_specular']));
-
-                if ('specularColorFactor' in mat_Factor.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilonArray(mat_Factor.extensions['KHR_materials_specular']['specularColorFactor'], [1.0, 1.0, 1.0]);
-                } else {
-                    assert.ok(!("specularColorFactor" in mat_Factor.extensions['KHR_materials_specular']));
-                }
-                assert.ok(!("specularTexture" in mat_Factor.extensions['KHR_materials_specular']));
-                assert.ok(!("specularColorTexture" in mat_Factor.extensions['KHR_materials_specular']));
-                if ('specularFactor' in mat_Factor.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_Factor.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_Factor.extensions['KHR_materials_specular']));
-                }
-
-                if ('specularFactor' in mat_Color.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_Color.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_Color.extensions['KHR_materials_specular']));
-                }
-                assert.equalEpsilonArray(mat_Color.extensions['KHR_materials_specular']['specularColorFactor'], [0.18, 0.18, 0.18]);
-                assert.ok(!("specularTexture" in mat_Color.extensions['KHR_materials_specular']));
-                assert.ok(!("specularColorTexture" in mat_Color.extensions['KHR_materials_specular']));
-
-                if ('specularFactor' in mat_SpecTex.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_SpecTex.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_SpecTex.extensions['KHR_materials_specular']));
-                }
-                assert.equalEpsilonArray(mat_SpecTex.extensions['KHR_materials_specular']['specularColorFactor'], [0.18, 0.18, 0.18]);
-                assert.ok(!("specularTexture" in mat_SpecTex.extensions['KHR_materials_specular']));
-                assert.ok(!("specularColorTexture" in mat_SpecTex.extensions['KHR_materials_specular']));
-
-
-                if ('specularFactor' in mat_SpecTexFac.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_SpecTexFac.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_SpecTexFac.extensions['KHR_materials_specular']));
-                }
-                assert.equalEpsilonArray(mat_SpecTexFac.extensions['KHR_materials_specular']['specularColorFactor'], [0.18, 0.18, 0.18]);
-                assert.ok(!("specularTexture" in mat_SpecTexFac.extensions['KHR_materials_specular']));
-                assert.ok(!("specularColorTexture" in mat_SpecTexFac.extensions['KHR_materials_specular']));
-
-                if ('specularFactor' in mat_SpecColorTex.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_SpecColorTex.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_SpecColorTex.extensions['KHR_materials_specular']));
-                }
-                assert.equalEpsilonArray(mat_SpecColorTex.extensions['KHR_materials_specular']['specularColorFactor'], [0.0, 0.0, 0.0]);
-                assert.ok(!("specularTexture" in mat_SpecColorTex.extensions['KHR_materials_specular']));
-                assert.ok(!("specularColorTexture" in mat_SpecColorTex.extensions['KHR_materials_specular']));
-
-                if ('specularFactor' in mat_SpecColorTexFac.extensions['KHR_materials_specular']) {
-                    assert.equalEpsilon(mat_SpecColorTexFac.extensions['KHR_materials_specular']['specularFactor'], 1.0);
-                } else {
-                    assert.ok(!("specularFactor" in mat_SpecColorTexFac.extensions['KHR_materials_specular']));
-                }
-                assert.equalEpsilonArray(mat_SpecColorTexFac.extensions['KHR_materials_specular']['specularColorFactor'], [0.0, 0.0, 0.0]);
-                assert.ok(!("specularTexture" in mat_SpecColorTexFac.extensions['KHR_materials_specular']));
-                assert.ok(!("specularColorTexture" in mat_SpecColorTexFac.extensions['KHR_materials_specular']));
-
-            });
-
             it('roundtrips factors', function() {
                 let dir = '22_factors';
                 let outDirPath = path.resolve(OUT_PREFIX, 'roundtrip', dir, outDirName);
@@ -2802,6 +3072,46 @@ describe('Importer / Exporter (Roundtrip)', function() {
                 const primitive2 = asset.meshes[0].primitives[1];
                 assert.strictEqual(asset.accessors[primitive2.attributes['_PRESSURE']].count, 4);
             });
+
+            it('roundtrips gpu instances', function() {
+                let dir = '24_gpu_instancing';
+                let outDirPath = path.resolve(OUT_PREFIX, 'roundtrip', dir, outDirName);
+                let gltfPath = path.resolve(outDirPath, dir + '.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                assert.strictEqual(asset.meshes.length, 2);
+                assert.strictEqual(asset.nodes.length, 6);
+
+            });
+
+            it('roundtrips anisotropy', function() {
+                let dir = '25_anisotropy';
+                let outDirPath = path.resolve(OUT_PREFIX, 'roundtrip', dir, outDirName);
+                let gltfPath = path.resolve(outDirPath, dir + '.gltf');
+                const asset = JSON.parse(fs.readFileSync(gltfPath));
+
+                const mat_roughness_0_5 = asset.materials.find(mat => mat.name === "roughness 0.5");
+                assert.equalEpsilon(mat_roughness_0_5.extensions['KHR_materials_anisotropy']["anisotropyStrength"], 1.0);
+                assert.ok("anisotropyTexture" in mat_roughness_0_5.extensions['KHR_materials_anisotropy']);
+                assert.ok(!("anisotropyRotation" in mat_roughness_0_5.extensions['KHR_materials_anisotropy']));
+
+                const mat_roughness_1_0 = asset.materials.find(mat => mat.name === "roughness 1.0");
+                assert.equalEpsilon(mat_roughness_1_0.extensions['KHR_materials_anisotropy']["anisotropyStrength"], 1.0);
+                assert.equalEpsilon(mat_roughness_1_0.extensions['KHR_materials_anisotropy']["anisotropyRotation"], 0.349);
+                assert.ok("anisotropyTexture" in mat_roughness_1_0.extensions['KHR_materials_anisotropy']);
+
+                const tan_text = asset.materials.find(mat => mat.name === "Aniso Tan + Texture");
+                assert.equalEpsilon(tan_text.extensions['KHR_materials_anisotropy']["anisotropyStrength"], 0.8);
+                assert.ok(!("anisotropyRotation" in tan_text.extensions['KHR_materials_anisotropy']));
+                assert.ok("anisotropyTexture" in tan_text.extensions['KHR_materials_anisotropy']);
+
+                const tan_rot = asset.materials.find(mat => mat.name === "Aniso Tan + Rotation + Texture");
+                assert.equalEpsilon(tan_rot.extensions['KHR_materials_anisotropy']["anisotropyStrength"], 1.0);
+                assert.equalEpsilon(tan_rot.extensions['KHR_materials_anisotropy']["anisotropyRotation"], 0.349065840);
+                assert.ok("anisotropyTexture" in tan_rot.extensions['KHR_materials_anisotropy']);
+
+            });
+
         });
     });
 });
